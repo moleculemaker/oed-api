@@ -1,0 +1,39 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OED_DB_USER=${OED_DB_USER:-mmli}
+      - OED_DB_PASSWORD=${OED_DB_PASSWORD:-mmli}
+      - OED_DB_HOST=db
+      - OED_DB_PORT=5432
+      - OED_DB_NAME=${OED_DB_NAME:-mmlidb}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./app:/app/app # For development purposes
+
+  db:
+    image: postgres:17
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${OED_DB_USER:-mmli}
+      - POSTGRES_PASSWORD=${OED_DB_PASSWORD:-mmli}
+      - POSTGRES_DB=${OED_DB_NAME:-mmlidb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db_init:/docker-entrypoint-initdb.d # Mount SQL files for initialization
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mmli -d mmlidb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
