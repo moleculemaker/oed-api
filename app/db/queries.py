@@ -14,7 +14,7 @@ async def get_column_values(db: Database, column: str) -> List[str]:
     # FilterableColumn enum from app.v1.endpoints.metadata.get_metadata but, in
     # case this is called elsewhere down the road, might as well to validation
     # here too.
-    if column not in [filterable_Column.value for filterable_Column in OEDColumn]:
+    if column not in [column.value for column in OEDColumn]:
         raise ValueError(f"Invalid OED column: {column}")
 
     query = f"""

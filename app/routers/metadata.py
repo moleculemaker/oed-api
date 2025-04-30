@@ -10,7 +10,7 @@ router = APIRouter(tags=["Metadata"])
 
 @router.get("/metadata", summary="Get metadata for a column")
 async def get_metadata(
-    filterable_column: OEDColumn,
+    column: OEDColumn,
     db: Database = Depends(get_db),
 ) -> OEDColumnValues:
     """
@@ -27,8 +27,8 @@ async def get_metadata(
     - /api/v1/metadata?column=ec
     """
     try:
-        values = await get_column_values(db, column=filterable_column.value)
-        return OEDColumnValues(column=filterable_column.value, values=values)
+        values = await get_column_values(db, column=column.value)
+        return OEDColumnValues(column=column.value, values=values)
     except Exception as e:
         logger.error(f"Error getting metadata: {e}")
         raise HTTPException(
