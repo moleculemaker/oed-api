@@ -1,7 +1,6 @@
 
+create schema if not exists oed;
 
-create database mmlidb;
 
-create role mmli password 'mmli' login;
+alter database mmlidb set search_path to oed;
 
-grant superuser to mmli;
