@@ -31,6 +31,7 @@ controller:
 
   # TODO: parameterize labels, tolerations, nodeSelector, resources, etc?
 
+
 # Define how to access this application over the network
 # The Service creates a static IP that will round-robin requests to the different replicas
 service:
@@ -41,7 +42,7 @@ service:
 
 # Define whether / how to access this application over the public internet
 ingress:
-  enabled: false
+  enabled: true
   hostname: "fastapi.openenzymedb.mmli1.ncsa.illinois.edu"
   tls: true
   className: traefik
@@ -52,7 +53,7 @@ ingress:
 
     # Define Traefik strict TLS rules and Middlewares for ForwardAuth
     kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/router.middlewares: openenzymedb-oed-cors-header@kubernetescrd,openenzymedb-oed-redirect-to-login@kubernetescrd,openenzymedb-oed-private-auth@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: openenzymedb-oed-staging-cors-header@kubernetescrd,openenzymedb-oed-staging-redirect-to-login@kubernetescrd,openenzymedb-oed-staging-private-auth@kubernetescrd
     traefik.ingress.kubernetes.io/router.tls: "true"
 
 
