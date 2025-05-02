@@ -1,0 +1,13 @@
+# Assigns an internal static IP that will round-robin requests to matching container ports
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  selector:
+    app: {{ .Release.Name }}
+  type: {{ .Values.service.type }}
+  ports:
+    - protocol: {{ .Values.service.protocol }}
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}

@@ -1,0 +1,12 @@
+Application is now running!
+
+{{- if .Values.ingress.enabled }}
+Access http{{- if .Values.ingress.tls }}s{{- end }}://{{ .Values.ingress.hostname }} to access FastAPI
+Access http{{- if .Values.ingress.tls }}s{{- end }}://{{ .Values.ingress.hostname }}/docs for interactive SwaggerUI
+{{- else }}
+Run the following command to privately open a port to your service:
+    kubectl port-forward service/{{ .Release.Name }} --namespace {{ .Release.Namespace }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+Access http://localhost:{{ .Values.service.port }} to access FastAPI
+Access http://localhost:{{ .Values.service.port }}/docs for interactive SwaggerUI
+{{- end }}

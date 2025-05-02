@@ -12,3 +12,10 @@ wheels/
 .env
 
 logs/
+
+# IDE Metadata
+.idea/
+.vscode/
+
+# Helm chart dependencies
+chart/charts/

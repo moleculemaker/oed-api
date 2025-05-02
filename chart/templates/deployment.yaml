@@ -1,0 +1,43 @@
+# Defines the container deployment of the application
+# This template will be used to create a Pod that runs the container(s) on any available worker node
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.controller.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: oed-api
+          image: {{ .Values.controller.image.repository }}
+          imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+{{- if .Values.config.existingSecret }}
+          # Load environment variable values from existing Secret
+          envFrom:
+            - secretRef:
+                name: {{ .Values.config.existingSecret }}
+{{- else }}
+          # Use hardcoded plaintext values (less secure)
+          env:
+            - name: OED_DB_USER
+              value: {{ .Values.config.OED_DB_USER }}
+            - name: OED_DB_PASSWORD
+              value: {{ .Values.config.OED_DB_PASSWORD }}
+            - name: OED_DB_HOST
+              value: {{ .Values.config.OED_DB_HOST }}
+            - name: OED_DB_PORT
+              value: {{ .Values.config.OED_DB_PORT }}
+            - name: OED_DB_NAME
+              value: {{ .Values.config.OED_DB_NAME }}
+{{- end }}

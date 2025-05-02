@@ -1,0 +1,87 @@
+# Default values for mmli-oed-api
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+# Arbitrary configuration, unique to this application
+config:
+  # Defined as an encrypted SealedSecret (see below)
+  # NOTE: This overrides the hardcoded values below
+  existingSecret: moldb-oed-api
+
+  # Alternatively, you can hardcode the values here instead (for local development only)
+  # These are ignored if existingSecret is defined above
+  OED_DB_USER: 'molfront'
+  OED_DB_PASSWORD: ''   # See SealedSecret below
+  OED_DB_HOST: 'moldb-fastapi-postgresql.moldb.svc.cluster.local'
+  OED_DB_PORT: '5432'
+  OED_DB_NAME: 'molfront'
+
+
+# The Deployment captures everything about the container that will run
+controller:
+  # Define how many replicas of this application should run
+  replicas: 1
+
+  # Define which Docker image should be run for this application (container)
+  image:
+    repository: moleculemaker/mmli-oed-api
+    pullPolicy: Always
+    #pullSecrets: []
+
+  # TODO: parameterize labels, tolerations, nodeSelector, resources, etc?
+
+# Define how to access this application over the network
+# The Service creates a static IP that will round-robin requests to the different replicas
+service:
+  type: ClusterIP
+  protocol: TCP
+  port: 8000
+
+
+# Define whether / how to access this application over the public internet
+ingress:
+  enabled: false
+  hostname: "fastapi.openenzymedb.mmli1.ncsa.illinois.edu"
+  tls: true
+  className: traefik
+  annotations:
+    # Automatically issue a TLS certificate for this ingress hostname
+    kubernetes.io/tls-acme: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-production
+
+    # Define Traefik strict TLS rules and Middlewares for ForwardAuth
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.middlewares: openenzymedb-oed-cors-header@kubernetescrd,openenzymedb-oed-redirect-to-login@kubernetescrd,openenzymedb-oed-private-auth@kubernetescrd
+    traefik.ingress.kubernetes.io/router.tls: "true"
+
+
+# TODO: in the future if this is split into prod/staging, this secret would likely be for staging
+# Additional Kubernetes resources to deploy along with this Helm chart
+# SealedSecrets, Middlewares, Volume definitions, etc
+extraDeploy:
+  # First, we build up in plaintext the Secret that we would like to encrypt (seal)
+  # After building up a raw Secret, the cluster admin can encrypt them using the following command:
+  #     kubeseal --format yaml < mmli-oed-api.moldb.secret.yaml > mmli-oed-api.moldb.sealedsecret.yaml
+  # SealedSecrets can only be decrypted (unsealed) by our cluster's private key
+  # This Secret will be automatically decrypted by our cluster, making it available to our application
+  - apiVersion: bitnami.com/v1alpha1
+    kind: SealedSecret
+    metadata:
+      creationTimestamp: null
+      name: moldb-oed-api
+      namespace: openenzymedb
+    spec:
+      encryptedData:
+        DATABASE_URL: AgAtcittGKVpQ+FDNVOUGxQMGr/oKR5WtQCp/7ToHeYECDTeYGJ2eg8LLVEdXACGWv8WP24E3lH9REW2Ay+GR9GT1C+uhywSMO3CKcUpJsVPe8w6XnwgPWTYo0aFD6TS1FgOr9o4H9IHyQqtyKBy2+E4GS4sWZfqjFGdQy3kDiDgjLMsEb57cNO2rGEgovpXeZX18sAlveykNaqqfjAPdRQFvZl25rJpaZuq5K1xbmDlyqZPFtg/gYyzuiEVcCLUNvbW/YpuQgtuBUbhNoMaNUqeB9m6G17Tw/lWV+u9DiQUMegmIuze3qBNRLmsQIzs3AgrEJN9dYKC7iQPqdy6Ho81ZqaI3PHZb/vMQPJ6sfIjEyoZ/G3ubi6JtlTkPQ8QzQxVjUOWmyAt6NP8uEcXgaEFVdpUPOM0q3wOxL1VeP4xpFN/t+zTHEzPd+jCWiwAo2NRUip9A4e/8LY7/ChgMhMj25g+3KYoJtkCKc3sHjEJp6eCK0MK7dKwhtO2xlQRBMqX9EZzUnq+1PnyHbHZ61jdmvoPOr1bU5uVukkTEi7DUQWmJ6hisdnTM/LI1m3B8ipDUETpF27JN0+Qr9L5XroFAKy3gYnD4etPE6LAzKcmgDUsao4gGpJjPwo1rRgtZrZXoFKdu3rKNDGBS6NmI9pG54kj+pWja8r8ssKH6MPVHFFuQZsCnCL3dvrZxSOdtA19KbTM8lXDKLQur88qJpeCQ79M4fWK1PDSqEEfXvIkoghsXF5cF/EZVXIh3nmHcoilHwTMPr+JD8KlJTHjvdF2sOIG5Ptemo6uomI9RqwoXgYOciTn0xtUkH0Dyjy7d0YRfcN/prkBH6xc0SLWmvf1V92f
+        OED_DB_HOST: AgAsj0oWTzs6lLm7nVnBEQfzcgf1E3q21QXfNyKlWxndMlT7DVtYB9nE11WINUco+8CegT4vZXmRuyfAOp1b3FHkvjqSHQfHkwqz9cx4Wr+HQ88TiOvVOu32kBDIw0PWOBs0hn0DK/sOp82sm03iANBVFMePYweGQB3WwZAxXGyfHpXZUINFz1Cam007jbcZbvPqZelmMEkT5x8t5Ap3NcknY+oQ1CECvUWenoNaoZjBO4oNKBUXVreZ5iPt2hmDBbxqqL4LZbitAiw587Rjc6WxYO0xppM3KOCxjaMjY+rwY1GQvvFa9Ch4A76DjOhMFy1j76qvNr6c9dgg9EnQ7q/oNX/YiSm9bVWeB5GprdpmCRMpJha326U4IcO8tJl71NH/X+D27JYUY46ZCezIvEv6HDLKwYXcTyL4Pj7Fph14XSSUa/1MWstJhl5WtDk+f0szSCSxCJmJ5J69nurcId/vtS+Qz6XlMvg1lwQZJMnaqPBzidCfeUGVoifr/kqNr12IIUFi0majx7dic99AWuO/k1cvAvui8LwxrfE6I6+raJm6AQevjPbgonUZRoh+gUAXJVmlRpJEnMZvbbqbpCbCkqm0EUqUcOPf5qDA8MdP3hMLhWmH4vWnELVp2PTREDwKGtedUImyMmphFKRg4hCZixYHGL371CukLrfPuXMHTR3VK+lwwwn8YyJuGT9uHGQ7oFnueXS5//7AB66sgbv6eJYJvU4BRyXDpWmjdJfVCvWYD/m+S1+9eXtjFdPVZ/A=
+        OED_DB_NAME: AgCWQaqFT885iYDhsBsFhwl3uZ4VCTW83fG6kZxJlO20entcTu2jUHlcDjygR2ymUIHmKsESXKRTtpwV1BouddKqNS44fYUljuEsFu0UVoYxgHZevUXPolrbBvZBfZiQcVjKOZIAM7A+7BUi8e67vI6U5yQjw8y0cEWKlffS1imEpucI0eRnB8S0uuiPheBJNwvJ2Vq2NwzqJTyNQXzdCdM4IkrADF1LEJaPO3p0RPAlCIh0bWQEAddjRQ5zvELmnDt6EmKvgWV/D6ajTNDOk762IZfMgUszurwvLFTtlcoYerlRgg8qvzb9l7rlXJ5XxZPfWt1guuBe62QZznp64PemlXM76zt8i1L/juXnUfkPi+5qBs+JONotPgnskOy0zLJBLOcWruyzePQeh+zb/NUxLw7TvRnrAKQeRknEy2N0uTdLnPptiBNA8GoOP6u9v+vuJQe1IWs8FZ+MPBqDIklsTPVbCw5lcgxmMPwF0yJa+LSoc0y+vIR0cMIxOIeKmKqF2EHHvUivzjtM/RhPe2kQU4bq3zuWNhRIrvaeycCClYonoimdfwf2jf4E4kz6l0B+pDDVaeUq9F+oJeyf6cfExxgvSHN+40nj8fJxqW1B39afjmKoBO6lGWsTHNHDcTaopddTbayip3j8aru070D6xLkDoWs6C0NtucULJFdYW9hlEp+aF3piVjMJElmpnOFk4Js/ZbCS2g==
+        OED_DB_PASSWORD: AgAbPAiND4w+L0238TjVhnmKa7pNyarfz3fJ5EONP+oHZDPI53Gz31XPD1igxEuP/2+32+G4oIauU1Ac+txKVDOrmGr6ol3w3d+hByqbfdDwUgRkX7owMMRHTLyTUadstr/+KhoR+cmCpmyYWD4Ex52PjhW48jxavMsBuUNrgwyUB6efrzUmM6sw9hmc0wL8dNxvWSQg/CaesYuthk+9zOJk0etdMByYGD+gpvPz41aDEXKBb2hXANnEKGgrFeDpUneU2rYMMkmo0pB+74CRKJc8sof/WX9lBmJf4UCcRfY6TXWBM5Lkiq3N1mkjAlw7d3n46bnvgDuyF0SxdluN4ELt9ti/3KMbG0p0c1WYcEQRB82Nr9z5oI1bHE8y6DNpI9CzwLPp46oQ3HuiwcBFgw5x3XBIeUK550ewaBFp3LCV8MViAtC9E0gi3XFBs4Hfe6cXJ9HmoLinC75aK5BBBeQj8BGDc2nJVvijOrTKZJbI6v6KtxPJUbYTLOmsFWEWewHcu9EHYVQq5vY6TBmUMJT4275XKfLhAK/ZN+PbIahbOuJuzSza2dJDdZbd7+sSJTrKgnGHpkN/edOncpCxl9qxtlLo6QIlP03wf6hTBW5+PTspN4WvIWEFCAHOJzEbdXItQJKRXwDLNGkRekFN76tlR+dmdopVJDrwcza4M/a8fcR1f/eZLKFecXhkfMvsZqSHI15cbM14hjpSBycweAVCHhXX2+OE51IwLjLqoYBxTA==
+        OED_DB_PORT: AgA8lOdq0e2elAThQd9P2AaZVgv+1fXPbI765wspdXYhVJ1i+VfVk0nVLaGDImpEYDPiBKpKZh9QxTxgGfdTxFU8A6wHyhFEhQfkXpxTaWSzNbQk1qCMKLDpvItCf+NASWqMrKKIOeZ/XW26EWnIJaIuV9rQBObUSpghmrM6TMSYObm4a7CNXsRPFOm/f8HIKzrGqPHVuxZ3V6P9pkjA4RayWa+pkrGr7llF7qqThn4cer+v0CrzXolMLaFCJ7q5eNGNoLJJBmV62ifjHcqkzKK0wwyMI2a+aqZh/GTrkd+HYTSO2PX1oDcUx74SEFCOy7HAXolr59iEvDdZYoSJ9noXcmzc8qTMnOWexr4Kn96iJed6xTRH8w2WIKu0afy0cYD0DF8Hlf1dap9rPwxJv6MwfRMfifncWOyVLKscJe/73QFtSV5IVCR0ql74HN9ieURm3xrAb5nqu5PxxzKG9FBuTJSPy0tn2ZxXEij7ezNOxnzlfbTqSQqkC6VN88F3K1YO8E38p+wSFwIrUGhjrpMdJ9Qx+w2CjcOqBieyZ/GWjJkMxj3v+LtTocVzTQE0ROIhnGFJ5vgyvghSHvqnioUBLwqH8TSiNlijV3mYIWpd1MvHsb0N/alyc8/cPvnFqxYDf+ofIsWCjs6IDz6Zopq2AZyl1qFq7ymaUlYYZp/C5zWx5myVnVjIXPQKsdpfS5iJZUmI
+        OED_DB_USER: AgAY0B91uTtpXTj4I/fpRg8xlEiMkzd0xIBP38IgRISv8htVFMU+Z8x4cMRcwkrQrzVHnxh4hxRRTQJFK1nvUNceljuGhwDC3N4x0Lv/8v/kiGg131zLAIhDit4pu+aRS1QXMcf2kiuskENBVJW3dZHc8gd/fKe4/qm6SqLQKmQp4Mi1wpdBL95cqbdFqFkJtMaSla45n6GrdJpUONIkVieALk9mNM3a+o8ZBTkIyu8PD2jAspg0+xNnOv+XSFIyCXZ5K7724kR5/ubyR4gsxP6UXZ+zwTjBK+O1kqI+pGQgPt/ndcVOqxrXvHHct8mFEqtVwtwRnEio7awcsDtS73d1V1MP562U0mAQF7Xe4074gYDiz59JAwWSE25rl8Um1EkHlKV/g4oFI/4IAMT0gpj95Tg7vKQlVPFsJt+E7BKy6GDuQxZGvsypTV1PRLfsIwyIMh/CLTq0Dz22Hxm7D48TxpWhn2lrS3wHPRBJ37h0e3s9unSGf4FA0ZnF8QGJ9JUqxVBpBqA7NDq5vOq4BP+HxcbpbZj0j/4KxbKwZbZ4FwlOVCPXIn9rbQl6pBsTzZ5nx2GiKqNmWqqJLd2Y2BOYO5FC+9aL7Az7oseYNiZLCTmvFwS7GdXvBrKIuMIa4w4+glhG9nokiNNz4StnM1WHynXfTKLuKrKdRLI0rF0EZ/a5DNjfGdxlLpIEOUlshBaH4fQNacM8PQ==
+      template:
+        metadata:
+          creationTimestamp: null
+          name: moldb-oed-api
+          namespace: openenzymedb
+        type: Opaque
