@@ -38,71 +38,9 @@ def parse_query_params(
     smiles: Optional[List[str]] = Query(
         None, description="SMILES representation of the substrate chemical structure"
     ),
-    # Numeric range filters
-    ph_min: Optional[float] = Query(
-        None,
-        description="Minimum pH value at which the data for the enzyme catalyzed reaction was collected",
-    ),
-    ph_max: Optional[float] = Query(
-        None,
-        description="Maximum pH value at which the data for the enzyme catalyzed reaction was collected",
-    ),
-    temperature_min: Optional[float] = Query(
-        None,
-        description="Minimum temperature (in degrees Celsius) at which the data for the enzyme catalyzed reaction was collected",
-    ),
-    temperature_max: Optional[float] = Query(
-        None,
-        description="Maximum temperature (in degrees Celsius) at which the data for the enzyme catalyzed reaction was collected",
-    ),
-    kcat_value_min: Optional[float] = Query(
-        None,
-        description="Minimum Michaelis-Menten catalytic rate constant (kcat) value",
-    ),
-    kcat_value_max: Optional[float] = Query(
-        None,
-        description="Maximum Michaelis-Menten catalytic rate constant (kcat) value",
-    ),
-    km_value_min: Optional[float] = Query(
-        None,
-        description="Minimum Michaelis-Menten, Michaelis constant value (in concentration units)",
-    ),
-    km_value_max: Optional[float] = Query(
-        None,
-        description="Maximum Michaelis-Menten, Michaelis constant value (in concentration units)",
-    ),
-    kcatkm_value_min: Optional[float] = Query(
-        None,
-        description="Minimum Michaelis-Menten catalytic efficiency (also known as specificity constant) value",
-    ),
-    kcatkm_value_max: Optional[float] = Query(
-        None,
-        description="Maximum Michaelis-Menten catalytic efficiency (also known as specificity constant) value",
-    ),
-    kcatkm_threshold_delta_min: Optional[float] = Query(
-        None,
-        description="Minimum calculated absolute difference between the measured kcatkm_value and the computed value from kcat_value/km_value",
-    ),
-    kcatkm_threshold_delta_max: Optional[float] = Query(
-        None,
-        description="Maximum calculated absolute difference between the measured kcatkm_value and the computed value from kcat_value/km_value",
-    ),
-    # PubMed ID filters
-    kcat_pubmedid: Optional[List[float]] = Query(
-        None,
-        description="The PubMed Identifier for the experimental details from which the kcat data was collected",
-    ),
-    km_pubmedid: Optional[List[float]] = Query(
-        None,
-        description="The PubMed Identifier for the experimental details from which the Km data was collected",
-    ),
-    kcatkm_pubmedid: Optional[List[float]] = Query(
-        None,
-        description="The PubMed Identifier for the experimental details from which the kcat/Km data was collected",
-    ),
     # Response format and pagination
-    format: Optional[ResponseFormat] = Query(
-        ResponseFormat.JSON.value, description="Response format (json or csv)"
+    format: ResponseFormat = Query(
+        default=ResponseFormat.JSON, description="Response format (json or csv)"
     ),
     columns: Optional[List[str]] = Query(
         None, description="Columns to include in the response"
@@ -115,8 +53,8 @@ def parse_query_params(
     """Parse and validate query parameters."""
     try:
         # Validate format
-        if format not in [fmt.value for fmt in ResponseFormat]:
-            format = ResponseFormat.JSON.value
+        if format not in [fmt for fmt in ResponseFormat]:
+            format = ResponseFormat.JSON
 
         return OEDDataQueryParams(
             ec=ec,
@@ -125,21 +63,6 @@ def parse_query_params(
             uniprot=uniprot,
             enzymetype=enzymetype,
             smiles=smiles,
-            ph_min=ph_min,
-            ph_max=ph_max,
-            temperature_min=temperature_min,
-            temperature_max=temperature_max,
-            kcat_value_min=kcat_value_min,
-            kcat_value_max=kcat_value_max,
-            km_value_min=km_value_min,
-            km_value_max=km_value_max,
-            kcatkm_value_min=kcatkm_value_min,
-            kcatkm_value_max=kcatkm_value_max,
-            kcatkm_threshold_delta_min=kcatkm_threshold_delta_min,
-            kcatkm_threshold_delta_max=kcatkm_threshold_delta_max,
-            kcat_pubmedid=kcat_pubmedid,
-            km_pubmedid=km_pubmedid,
-            kcatkm_pubmedid=kcatkm_pubmedid,
             format=format,
             columns=columns,
             limit=limit,
@@ -169,11 +92,11 @@ async def get_data(
 
     Example queries:
 
-    - /api/v1/data?organism=Homo%20sapiens&organism=Mus%20musculus&temperature_min=25&temperature_max=40
+    - /api/v1/data?organism=Homo%20sapiens&organism=Mus%20musculus
 
     - /api/v1/data?ec=1.1.%&format=csv&limit=100
 
-    - /api/v1/data?columns=ec&columns=substrate&columns=organism&columns=kcat_value
+    - /api/v1/data?columns=ec&columns=substrate&columns=organism
     """
 
     try:

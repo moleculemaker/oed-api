@@ -66,18 +66,7 @@ async def build_query_conditions(
                 conditions.append(f"({' OR '.join(column_conditions)})")
 
     # Process numeric range filters
-    range_filters = [
-        ("ph", params.ph_min, params.ph_max),
-        ("temperature", params.temperature_min, params.temperature_max),
-        ("kcat_value", params.kcat_value_min, params.kcat_value_max),
-        ("km_value", params.km_value_min, params.km_value_max),
-        ("kcatkm_value", params.kcatkm_value_min, params.kcatkm_value_max),
-        (
-            "kcatkm_threshold_delta",
-            params.kcatkm_threshold_delta_min,
-            params.kcatkm_threshold_delta_max,
-        ),
-    ]
+    range_filters = []  # Removed as requested
 
     for column, min_val, max_val in range_filters:
         if min_val is not None:
@@ -93,11 +82,7 @@ async def build_query_conditions(
             query_params[param_name] = max_val
 
     # Process PubMed ID filters
-    pubmed_filters = [
-        ("kcat_pubmedid", params.kcat_pubmedid),
-        ("km_pubmedid", params.km_pubmedid),
-        ("kcatkm_pubmedid", params.kcatkm_pubmedid),
-    ]
+    pubmed_filters = []  # Removed as requested
 
     for column, values in pubmed_filters:
         if values:

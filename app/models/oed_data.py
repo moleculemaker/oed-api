@@ -30,19 +30,7 @@ class OEDColumn(Enum):
     organism = "organism"
     uniprot = "uniprot"
     enzymetype = "enzymetype"
-    ph = "ph"
-    temperature = "temperature"
     smiles = "smiles"
-    kcat_value = "kcat_value"
-    kcat_pubmedid = "kcat_pubmedid"
-    kcat_unit = "kcat_unit"
-    km_value = "km_value"
-    km_pubmedid = "km_pubmedid"
-    km_unit = "km_unit"
-    kcatkm_value = "kcatkm_value"
-    kcatkm_pubmedid = "kcatkm_pubmedid"
-    kcatkm_unit = "kcatkm_unit"
-    kcatkm_threshold_delta = "kcatkm_threshold_delta"
 
 
 class OEDDataBase(BaseModel):
