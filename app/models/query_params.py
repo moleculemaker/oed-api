@@ -14,6 +14,12 @@ class ResponseFormat(str, Enum):
 class OEDDataQueryParams(BaseModel):
     """Query parameters for OED data filtering."""
 
+    # Flag for automatic pagination
+    auto_paginated: bool = Field(
+        False, 
+        description="Whether results are automatically paginated"
+    )
+
     # String filters (exact match, case-insensitive, multiple values with OR logic)
     ec: Optional[List[str]] = Field(
         None,
