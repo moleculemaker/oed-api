@@ -25,6 +25,11 @@ app = FastAPI(
     description=settings.DESCRIPTION
     + f"""
 
+## Using this Page
+
+Sections below can be expanded to see detailed information about each endpoint, including parameters, response formats, and example usage.
+The "Try it out" feature allows you to interactively test endpoints directly from the documentation.
+
 ## Automatic Pagination
 
 When a query would return more than {settings.AUTO_PAGINATION_THRESHOLD} records and no explicit limit is
@@ -32,7 +37,6 @@ provided, the API will automatically paginate results to return {settings.AUTO_P
 at a time. The response will include pagination metadata with links to navigate
 to next and previous pages.
 
-This threshold can be configured using the AUTO_PAGINATION_THRESHOLD environment variable.
 """,
     version=settings.VERSION,
     lifespan=lifespan,

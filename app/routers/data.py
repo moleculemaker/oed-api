@@ -83,27 +83,109 @@ async def get_data(
     db: Database = Depends(get_db),
     request: Request = None,
 ) -> Any:
-    """
-    Get enzyme kinetic data with filtering options.
+    r"""
+Get enzyme kinetic data with filtering options.
 
-    This endpoint allows querying the OED database with various filters.
+This endpoint allows querying the OED database with various filters.
 
-    All filters on the same column are combined with OR logic, while filters on
-    different columns are combined with AND logic.
+All filters on the same column are combined with OR logic, while filters on
+different columns are combined with AND logic.
 
-    The response format can be either JSON (default) or CSV.
+The response format can be either JSON (default) or CSV.
 
-    Results are automatically paginated when they exceed the configured threshold
-    (default: configurable via AUTO_PAGINATION_THRESHOLD in config.Settings), unless
-    an explicit limit is provided.
+Results are automatically paginated when they exceed the configured threshold, unless
+an explicit limit is provided.
 
-    Example queries:
+### URL examples
 
-    - /api/v1/data?organism=Homo%20sapiens&organism=Mus%20musculus
+- /api/v1/data?organism=Homo%20sapiens&organism=Mus%20musculus
 
-    - /api/v1/data?ec=1.1.%&format=csv&limit=100
+- /api/v1/data?ec=1.1.%&format=csv&limit=100
 
-    - /api/v1/data?columns=ec&columns=substrate&columns=organism
+- /api/v1/data?columns=ec&columns=substrate&columns=organism
+
+### Python example retrieving JSON data
+
+```python
+import requests
+
+# Query data using filters based on metadata
+params = {
+    "organism": ["Trichoderma viride", "Salmonella enterica"],  # Multiple values use OR logic
+    "temperature_min": 25,
+    "temperature_max": 37,
+    "limit": 10  # Limit to 10 results
+}
+
+response = requests.get("https://fastapi.openenzymedb.mmli1.ncsa.illinois.edu/api/v1/data", params=params)
+
+if response.status_code == 200:
+    data = response.json()
+    print(f"Total matching records: {data['total']}")
+    print(f"Returning records: {len(data['data'])}")
+
+    # Access the first record
+    if data["data"]:
+        first_record = data["data"][0]
+        print("\nFirst record:")
+        print(f"EC number: {first_record['ec']}")
+        print(f"Substrate: {first_record['substrate']}")
+        print(f"Organism: {first_record['organism']}")
+        print(f"kcat value: {first_record['kcat_value']} {first_record.get('kcat_unit', '')}")
+else:
+    print(f"Error: {response.status_code} - {response.text}")
+```
+
+### Python example retrieving CSV data
+
+```python
+import requests
+import csv
+from io import StringIO
+
+# Query parameters
+params = {
+    "ec": ["1.14.15.16", "5.3.1.9"],  # Find data for specific EC numbers
+    "format": "csv",   # Request CSV format
+    "columns": ["ec", "substrate", "organism", "kcat_value", "km_value"],  # Only selected columns
+    "limit": 20        # Limit to 20 results
+}
+
+# Make the request
+response = requests.get("https://fastapi.openenzymedb.mmli1.ncsa.illinois.edu/api/v1/data", params=params)
+
+if response.status_code == 200:
+    # Parse CSV data
+    csv_data = StringIO(response.text)
+    reader = csv.DictReader(csv_data)
+
+    # Save to file
+    with open("oed_data_export.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=reader.fieldnames)
+        writer.writeheader()
+        for row in reader:
+            writer.writerow(row)
+
+    print(f"Data saved to oed_data_export.csv")
+
+    # Preview the data
+    csv_data.seek(0)  # Reset to beginning of stream
+    reader = csv.DictReader(csv_data)
+    rows = list(reader)
+    if rows:
+        print("\nSample of downloaded data:")
+        for i, row in enumerate(rows[:3]):
+            print(f"\nRecord {i+1}:")
+            print(f"EC: {row['ec']}")
+            print(f"Substrate: {row['substrate']}")
+            print(f"Organism: {row['organism']}")
+            if 'kcat_value' in row and row['kcat_value']:
+                print(f"kcat value: {row['kcat_value']}")
+            if 'km_value' in row and row['km_value']:
+                print(f"km value: {row['km_value']}")
+else:
+    print(f"Error: {response.status_code} - {response.text}")
+```
     """
 
     try:
