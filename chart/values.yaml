@@ -43,7 +43,7 @@ service:
 # Define whether / how to access this application over the public internet
 ingress:
   enabled: true
-  hostname: "fastapi.openenzymedb.mmli1.ncsa.illinois.edu"
+  hostname: "openenzymedb-api.platform.moleculemaker.org"
   tls: true
   className: traefik
   annotations:
