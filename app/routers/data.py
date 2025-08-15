@@ -117,7 +117,7 @@ params = {
     "limit": 10  # Limit to 10 results
 }
 
-response = requests.get("https://fastapi.openenzymedb.mmli1.ncsa.illinois.edu/api/v1/data", params=params)
+response = requests.get("https://openenzymedb-api.platform.moleculemaker.org/api/v1/data", params=params)
 
 if response.status_code == 200:
     data = response.json()
@@ -152,7 +152,7 @@ params = {
 }
 
 # Make the request
-response = requests.get("https://fastapi.openenzymedb.mmli1.ncsa.illinois.edu/api/v1/data", params=params)
+response = requests.get("https://openenzymedb-api.platform.moleculemaker.org/api/v1/data", params=params)
 
 if response.status_code == 200:
     # Parse CSV data

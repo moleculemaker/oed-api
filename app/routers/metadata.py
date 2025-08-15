@@ -32,7 +32,7 @@ for a more targeted download.
 import requests
 
 # Get distinct organism values to aid in filtering
-response = requests.get("https://fastapi.openenzymedb.mmli1.ncsa.illinois.edu/api/v1/metadata", params={"column": "organism"})
+response = requests.get("https://openenzymedb-api.platform.moleculemaker.org/api/v1/metadata", params={"column": "organism"})
 
 if response.status_code == 200:
     organism_data = response.json()

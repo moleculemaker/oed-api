@@ -53,7 +53,7 @@ ingress:
 
     # Define Traefik strict TLS rules and Middlewares for ForwardAuth
     kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/router.middlewares: openenzymedb-oed-staging-cors-header@kubernetescrd,openenzymedb-oed-staging-redirect-to-login@kubernetescrd,openenzymedb-oed-staging-private-auth@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: openenzymedb-oed-staging-cors-header@kubernetescrd
     traefik.ingress.kubernetes.io/router.tls: "true"
 
 
