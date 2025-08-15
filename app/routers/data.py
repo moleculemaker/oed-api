@@ -86,7 +86,7 @@ async def get_data(
     r"""
 Get enzyme kinetic data with filtering options.
 
-This endpoint allows querying the OED database with various filters.
+This endpoint allows querying the Open Enzyme Database with various filters.
 
 All filters on the same column are combined with OR logic, while filters on
 different columns are combined with AND logic.
