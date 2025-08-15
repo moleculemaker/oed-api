@@ -6,8 +6,8 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # API information
-    PROJECT_NAME: str = "OED Data API"
-    DESCRIPTION: str = "API for accessing enzyme kinetic data from the OED database"
+    PROJECT_NAME: str = "Open Enzyme Database API"
+    DESCRIPTION: str = "API for accessing enzyme kinetic data from the Open Enzyme Database."
     VERSION: str = "0.1.0"
 
     # API behavior configuration
