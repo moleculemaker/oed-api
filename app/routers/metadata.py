@@ -17,7 +17,7 @@ async def get_metadata(
 Get distinct values for a specified column.
 
 This endpoint returns a list of all distinct values for a specified column
-in the Open Enzyme Database data set. This is useful to inspect what values can be used
+in the Open Enzyme Database dataset. This is useful to inspect what values can be used
 for a more targeted download.
 
 ### URL examples
