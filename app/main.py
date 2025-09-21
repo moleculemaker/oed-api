@@ -51,6 +51,26 @@ provided, the API will automatically paginate results to return {settings.AUTO_P
 at a time. The response will include pagination metadata with links to navigate
 to next and previous pages.
 
+## Data Download
+
+Alternatively, the entire dataset can be downloaded in several different formats from the links below. Note these
+files are compressed using gzip (.gz) to reduce file size and must be decompressed before use.
+- **CSV format**: [OpenEnzymeDatabase-1.0.0.csv.gz](https://openenzymedb.platform.moleculemaker.org/assets/downloads/OpenEnzymeDatabase-1.0.0.csv.gz)
+- **JSON format**: [OpenEnzymeDatabase-1.0.0.json.gz](https://openenzymedb.platform.moleculemaker.org/assets/downloads/OpenEnzymeDatabase-1.0.0.json.gz)
+- **JSONL format**: [OpenEnzymeDatabase-1.0.0.jsonl.gz](https://openenzymedb.platform.moleculemaker.org/assets/downloads/OpenEnzymeDatabase-1.0.0.jsonl.gz)
+
+## Data License
+
+The Open Enzyme Database dataset is licensed under the Creative Commons Attribution 4.0 International License
+(CC BY 4.0). This means you are free to share and adapt the material for any purpose, even commercially,
+as long as you give appropriate credit, provide a link to the license, and indicate if changes were made.
+
+Full license text: [https://creativecommons.org/licenses/by/4.0/](https://creativecommons.org/licenses/by/4.0/)
+
+The Open Enzyme Database incorporates data from other sources:
+- **BRENDA**, which is published under CC BY 4.0.
+- **SABIO-RK**, which is published under the [SABIO-RK Non-Commercial Purpose License](https://sabiork.h-its.org/license.html).
+
 ## Support
 
 If you have any questions, issues, or feedback regarding the API, please reach out to us via email at <openenzymedb-feedback@moleculemaker.org>.
