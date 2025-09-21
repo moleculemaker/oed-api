@@ -67,10 +67,6 @@ as long as you give appropriate credit, provide a link to the license, and indic
 
 Full license text: [https://creativecommons.org/licenses/by/4.0/](https://creativecommons.org/licenses/by/4.0/)
 
-The Open Enzyme Database incorporates data from other sources:
-- **BRENDA**, which is published under CC BY 4.0.
-- **SABIO-RK**, which is published under the [SABIO-RK Non-Commercial Purpose License](https://sabiork.h-its.org/license.html).
-
 ## Support
 
 If you have any questions, issues, or feedback regarding the API, please reach out to us via email at <openenzymedb-feedback@moleculemaker.org>.
