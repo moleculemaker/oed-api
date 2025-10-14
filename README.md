@@ -29,7 +29,7 @@ A FastAPI application providing access to enzyme kinetic data from the OED datab
    docker-compose up -d
    ```
 
-4. Access the API documentation at http://localhost:8000/docs or http://localhost:8000/redoc
+4. Access the API documentation at http://localhost:8000/api/v1/docs or http://localhost:8000/api/v1/redoc
 
 ## API Documentation
 
@@ -84,7 +84,7 @@ if response.status_code == 200:
     print("Sample organisms:")
     for organism in organisms[:5]:  # Display first 5 organisms
         print(f"- {organism}")
-    # Sample output might include: 
+    # Sample output might include:
     # - Trichoderma viride
     # - Paenibacillus thiaminolyticus
     # - Naegleria fowleri
@@ -113,7 +113,7 @@ if response.status_code == 200:
     data = response.json()
     print(f"Total matching records: {data['total']}")
     print(f"Returning records: {len(data['data'])}")
-    
+
     # Access the first record
     if data["data"]:
         first_record = data["data"][0]
@@ -148,16 +148,16 @@ if response.status_code == 200:
     # Parse CSV data
     csv_data = StringIO(response.text)
     reader = csv.DictReader(csv_data)
-    
+
     # Save to file
     with open("oed_data_export.csv", "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=reader.fieldnames)
         writer.writeheader()
         for row in reader:
             writer.writerow(row)
-    
+
     print(f"Data saved to oed_data_export.csv")
-    
+
     # Preview the data
     csv_data.seek(0)  # Reset to beginning of stream
     reader = csv.DictReader(csv_data)

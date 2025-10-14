@@ -14,6 +14,12 @@ class ResponseFormat(str, Enum):
 class OEDDataQueryParams(BaseModel):
     """Query parameters for OED data filtering."""
 
+    # Flag for automatic pagination
+    auto_paginated: bool = Field(
+        False, 
+        description="Whether results are automatically paginated"
+    )
+
     # String filters (exact match, case-insensitive, multiple values with OR logic)
     ec: Optional[List[str]] = Field(
         None,
@@ -39,69 +45,9 @@ class OEDDataQueryParams(BaseModel):
         None, description="SMILES representation of the substrate chemical structure"
     )
 
-    # Numeric range filters
-    ph_min: Optional[float] = Field(
-        None,
-        description="Minimum pH value at which the data for the enzyme catalyzed reaction was collected",
-    )
-    ph_max: Optional[float] = Field(
-        None,
-        description="Maximum pH value at which the data for the enzyme catalyzed reaction was collected",
-    )
-    temperature_min: Optional[float] = Field(
-        None,
-        description="Minimum temperature (in degrees Celsius) at which the data for the enzyme catalyzed reaction was collected",
-    )
-    temperature_max: Optional[float] = Field(
-        None,
-        description="Maximum temperature (in degrees Celsius) at which the data for the enzyme catalyzed reaction was collected",
-    )
-    kcat_value_min: Optional[float] = Field(
-        None,
-        description="Minimum Michaelis-Menten catalytic rate constant (kcat) value",
-    )
-    kcat_value_max: Optional[float] = Field(
-        None,
-        description="Maximum Michaelis-Menten catalytic rate constant (kcat) value",
-    )
-    km_value_min: Optional[float] = Field(
-        None,
-        description="Minimum Michaelis-Menten, Michaelis constant value (in concentration units)",
-    )
-    km_value_max: Optional[float] = Field(
-        None,
-        description="Maximum Michaelis-Menten, Michaelis constant value (in concentration units)",
-    )
-    kcatkm_value_min: Optional[float] = Field(
-        None,
-        description="Minimum Michaelis-Menten catalytic efficiency (also known as specificity constant) value",
-    )
-    kcatkm_value_max: Optional[float] = Field(
-        None,
-        description="Maximum Michaelis-Menten catalytic efficiency (also known as specificity constant) value",
-    )
-    kcatkm_threshold_delta_min: Optional[float] = Field(
-        None,
-        description="Minimum calculated absolute difference between the measured kcatkm_value and the computed value from kcat_value/km_value",
-    )
-    kcatkm_threshold_delta_max: Optional[float] = Field(
-        None,
-        description="Maximum calculated absolute difference between the measured kcatkm_value and the computed value from kcat_value/km_value",
-    )
+    # Numeric range filters (removed as requested)
 
-    # PubMed ID filters
-    kcat_pubmedid: Optional[List[float]] = Field(
-        None,
-        description="The PubMed Identifier for the experimental details from which the kcat data was collected",
-    )
-    km_pubmedid: Optional[List[float]] = Field(
-        None,
-        description="The PubMed Identifier for the experimental details from which the Km data was collected",
-    )
-    kcatkm_pubmedid: Optional[List[float]] = Field(
-        None,
-        description="The PubMed Identifier for the experimental details from which the kcat/Km data was collected",
-    )
+    # PubMed ID filters (removed as requested)
 
     # Response format and pagination
     format: Optional[ResponseFormat] = Field(
@@ -121,5 +67,5 @@ class MetadataQueryParams(BaseModel):
 
     column: str = Field(
         ...,
-        description="Column name to get distinct values for. Available columns include: ec, substrate, organism, uniprot, enzymetype, kcat_unit, km_unit, kcatkm_unit, smiles.",
+        description="Column name to get distinct values for. Available columns include: ec, substrate, organism, uniprot, enzymetype, smiles.",
     )

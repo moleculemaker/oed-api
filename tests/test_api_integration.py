@@ -60,8 +60,6 @@ def test_data_endpoint_with_filters(test_client: TestClient, sql_capture):
         "/api/v1/data",
         params={
             "organism": ["Human"],
-            "temperature_min": 25.0,
-            "temperature_max": 37.0,
             "limit": 10,
         },
     )
@@ -93,8 +91,6 @@ def test_data_endpoint_with_filters(test_client: TestClient, sql_capture):
     # Verify filters in SQL
     for query in [data_query, count_query]:
         assert "LOWER(organism) = LOWER($" in query
-        assert "temperature >= $" in query
-        assert "temperature <= $" in query
 
     # Verify pagination in data query
     assert "LIMIT 10" in data_query
