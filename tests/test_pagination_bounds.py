@@ -46,7 +46,7 @@ def test_pagination_bounds_are_inclusive(test_client, sql_capture, param, value)
     [{"fetchval": lambda self, query, *args: 25, "fetch": lambda self, query, *args: []}],
     indirect=True,
 )
-async def test_previous_past_the_end_goes_to_the_last_page(monkeypatch, test_client, mock_db):
+async def test_previous_past_the_end_goes_to_the_last_records(monkeypatch, test_client, mock_db):
     """Past the end, `previous` used to point at another empty page."""
     monkeypatch.setattr(settings, "AUTO_PAGINATION_THRESHOLD", 10)
 

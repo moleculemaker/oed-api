@@ -246,7 +246,8 @@ else:
                 next_url = f"{base_url}?{urlencode(next_params, doseq=True)}"
 
             # Calculate previous page link if not on first page. Past the end, go
-            # back to the last page instead of another empty one.
+            # back to the last `limit` records instead of another empty page. That
+            # isn't necessarily a page boundary: 25 records in pages of 10 gives 15.
             if current_offset > 0:
                 prev_params = {
                     **query_params,
