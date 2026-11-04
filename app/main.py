@@ -46,11 +46,15 @@ description. You can click on any endpoint to expand it and see more details, in
 
 ### Technical Note: Automatic Pagination
 
-When a query would return more than {settings.AUTO_PAGINATION_THRESHOLD} records and no explicit limit, or one of
-at least {settings.AUTO_PAGINATION_THRESHOLD}, is provided, the API will automatically paginate results to return
-{settings.AUTO_PAGINATION_THRESHOLD} records at a time. A JSON response will include pagination metadata with links to
-navigate to next and previous pages. A CSV response carries the same links in a `Link` header, and the total
-number of matching records in an `X-Total-Count` header.
+When a JSON query would return more than {settings.AUTO_PAGINATION_THRESHOLD} records and no explicit limit is
+provided, the API will automatically paginate results to return {settings.AUTO_PAGINATION_THRESHOLD} records
+at a time. The response will include pagination metadata with links to navigate to next and previous pages.
+An explicit JSON limit can be at most {settings.AUTO_PAGINATION_THRESHOLD}.
+
+CSV responses are not paginated. Without an explicit limit, a CSV query returns every matching
+record, up to {data.MAX_DATA_LIMIT}; a query that matches more is rejected with a 400 asking
+you to narrow the filters or page with `limit` and `offset`. A CSV response carries no total,
+so when paging CSV with `limit`, stop at the first response with fewer than `limit` records.
 
 ## Data Download
 

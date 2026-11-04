@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, AsyncIterator, Dict, List, Optional
 
 import asyncpg
 from loguru import logger
@@ -65,6 +65,15 @@ class Database:
             await self.connect()
         records = await self.pool.fetch(query, *args, **kwargs)
         return [dict(record) for record in records]
+
+    async def iterate(self, query: str, *args) -> AsyncIterator[Dict[str, Any]]:
+        """Stream rows from a query through a server-side cursor."""
+        if not self.pool:
+            await self.connect()
+        # asyncpg cursors only work inside a transaction
+        async with self.pool.acquire() as conn, conn.transaction():
+            async for record in conn.cursor(query, *args, prefetch=1000):
+                yield dict(record)
 
     async def fetchval(self, query: str, *args, **kwargs) -> Any:
         """Fetch a single value from a query."""
