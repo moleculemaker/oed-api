@@ -12,6 +12,9 @@ from app.db.database import Database, get_db
 from app.db.queries import get_filtered_data, get_total_count
 from app.models.query_params import OEDDataQueryParams, ResponseFormat
 
+# Largest value Postgres accepts for LIMIT and OFFSET
+MAX_BIGINT = 2**63 - 1
+
 router = APIRouter(tags=["Data"])
 
 
@@ -48,9 +51,11 @@ def parse_query_params(
         None, description="Columns to include in the response"
     ),
     limit: Optional[int] = Query(
-        None, description="Maximum number of records to return"
+        None, ge=1, le=MAX_BIGINT, description="Maximum number of records to return"
     ),
-    offset: Optional[int] = Query(0, description="Number of records to skip"),
+    offset: Optional[int] = Query(
+        0, ge=0, le=MAX_BIGINT, description="Number of records to skip"
+    ),
 ) -> OEDDataQueryParams:
     """Parse and validate query parameters."""
     try:
@@ -240,11 +245,15 @@ else:
                 }
                 next_url = f"{base_url}?{urlencode(next_params, doseq=True)}"
 
-            # Calculate previous page link if not on first page
+            # Calculate previous page link if not on first page. Past the end, go
+            # back to the last `limit` records instead of another empty page. That
+            # isn't necessarily a page boundary: 25 records in pages of 10 gives 15.
             if current_offset > 0:
                 prev_params = {
                     **query_params,
-                    "offset": max(0, current_offset - current_limit),
+                    "offset": max(
+                        0, min(current_offset - current_limit, total_count - current_limit)
+                    ),
                     "limit": current_limit,
                 }
                 previous_url = f"{base_url}?{urlencode(prev_params, doseq=True)}"
