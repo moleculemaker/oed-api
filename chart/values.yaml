@@ -38,6 +38,15 @@ controller:
     limits:
       memory: 1Gi
 
+  # Additional environment variables for the container, as a list of {name, value}
+  extraEnv:
+    # Trust X-Forwarded-* from the ingress so generated URLs use https and logs show client
+    # addresses. 10.42.0.0/16 is this cluster's pod network, so every pod in the cluster is
+    # trusted, not only Traefik; outside clients can't spoof their address. Not "*", which
+    # would log the first X-Forwarded-For entry, one an outside client can set.
+    - name: FORWARDED_ALLOW_IPS
+      value: "10.42.0.0/16"
+
   # TODO: parameterize labels, tolerations, nodeSelector, etc?
 
 

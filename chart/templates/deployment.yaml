@@ -31,6 +31,10 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.config.existingSecret }}
+{{- with .Values.controller.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
 {{- else }}
           # Use hardcoded plaintext values (less secure)
           env:
@@ -44,4 +48,7 @@ spec:
               value: {{ .Values.config.OED_DB_PORT }}
             - name: OED_DB_NAME
               value: {{ .Values.config.OED_DB_NAME }}
+{{- with .Values.controller.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+{{- end }}
 {{- end }}
