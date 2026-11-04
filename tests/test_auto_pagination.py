@@ -115,11 +115,32 @@ async def test_auto_pagination_not_needed(monkeypatch, test_client, mock_db):
 
 
 @pytest.mark.asyncio
-async def test_pagination_navigation(monkeypatch):
-    """Test navigation through paginated results."""
-    # Skip this test for now - we'll address it separately
-    # This test requires more complex mocking of the request/response cycle
-    pytest.skip("This test will be implemented in a separate PR")
+@pytest.mark.parametrize(
+    "mock_db", 
+    [
+        {
+            "fetchval": lambda self, query, *args: 25,
+            "fetch": lambda self, query, *args: [{"id": i, "ec": f"1.1.1.{i}", "organism": f"Test Organism {i}"} for i in range(10)]
+        }
+    ], 
+    indirect=True
+)
+async def test_pagination_navigation(monkeypatch, test_client, mock_db):
+    """Test that following `next` reaches the last page.
+
+    Every page after the first is requested with an explicit limit equal to the
+    threshold, so it must still be treated as paginated and carry its own links."""
+    monkeypatch.setattr(settings, "AUTO_PAGINATION_THRESHOLD", 10)
+
+    offsets = []
+    url = "/api/v1/data"
+    while url:
+        data = test_client.get(url).json()
+        offsets.append(data["offset"])
+        url = data.get("next", "").replace("http://testserver", "")
+
+    assert offsets == [0, 10, 20]
+    assert "offset=10" in data["previous"]
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -173,3 +194,29 @@ async def test_results_are_not_printed(test_client, mock_db, capsys):
 
     assert response.status_code == 200
     assert "Distinctive organism" not in capsys.readouterr().out
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mock_db", 
+    [
+        {
+            "fetchval": lambda self, query, *args: 100,
+            "fetch": lambda self, query, *args: [{"id": i, "ec": f"1.1.1.{i}", "organism": f"Test Organism {i}"} for i in range(10)]
+        }
+    ], 
+    indirect=True
+)
+async def test_capped_csv_says_there_is_more(monkeypatch, test_client, mock_db):
+    """Test that a CSV response cut off by the cap says so in its headers.
+
+    A CSV body has nowhere to carry pagination metadata."""
+    monkeypatch.setattr(settings, "AUTO_PAGINATION_THRESHOLD", 10)
+
+    response = test_client.get("/api/v1/data?format=csv&limit=1000")
+
+    assert response.status_code == 200
+    assert response.headers["x-total-count"] == "100"
+    assert 'rel="next"' in response.headers["link"]
+    assert "offset=10" in response.headers["link"]
+    assert "format=csv" in response.headers["link"]

@@ -94,7 +94,8 @@ different columns are combined with AND logic.
 The response format can be either JSON (default) or CSV.
 
 Results are automatically paginated when they exceed the configured threshold, unless
-an explicit limit at or below the threshold is provided.
+an explicit limit below the threshold is provided. CSV responses carry the pagination
+links in a `Link` header and the total in an `X-Total-Count` header.
 
 ### URL examples
 
@@ -193,10 +194,11 @@ else:
         total_count = await get_total_count(db, params)
 
         # Apply automatic pagination if results exceed threshold and no explicit limit,
-        # or a larger one, was provided. Without the cap one request could load the
-        # whole table into memory.
+        # or one at least as large, was provided. Without the cap one request could load
+        # the whole table into memory. ">=" because the `next` links below carry
+        # limit=threshold, and those pages need links of their own.
         if total_count > settings.AUTO_PAGINATION_THRESHOLD and (
-            params.limit is None or params.limit > settings.AUTO_PAGINATION_THRESHOLD
+            params.limit is None or params.limit >= settings.AUTO_PAGINATION_THRESHOLD
         ):
             params.auto_paginated = True
             params.limit = settings.AUTO_PAGINATION_THRESHOLD
@@ -206,6 +208,46 @@ else:
 
         # Get data from database (now with potential auto-pagination applied)
         data = await get_filtered_data(db, params)
+
+        # Pagination links, for both response formats
+        next_url = None
+        previous_url = None
+        if params.auto_paginated and request:
+            base_url = str(request.url).split("?")[0]
+
+            # Prepare query parameters for pagination links
+            # For Pydantic v2 compatibility
+            query_params = {
+                k: v
+                for k, v in params.model_dump().items()
+                if k not in ["auto_paginated", "offset", "limit"]
+                and v is not None
+            }
+
+            # Set format explicitly if it was provided
+            if params.format != ResponseFormat.JSON:
+                query_params["format"] = params.format
+
+            current_offset = params.offset or 0
+            current_limit = params.limit or total_count
+
+            # Calculate next page link if there are more records
+            if current_offset + current_limit < total_count:
+                next_params = {
+                    **query_params,
+                    "offset": current_offset + current_limit,
+                    "limit": current_limit,
+                }
+                next_url = f"{base_url}?{urlencode(next_params, doseq=True)}"
+
+            # Calculate previous page link if not on first page
+            if current_offset > 0:
+                prev_params = {
+                    **query_params,
+                    "offset": max(0, current_offset - current_limit),
+                    "limit": current_limit,
+                }
+                previous_url = f"{base_url}?{urlencode(prev_params, doseq=True)}"
 
         # Handle response format
         if params.format == ResponseFormat.CSV:
@@ -228,12 +270,25 @@ else:
             for row in data:
                 writer.writerow(row)
 
+            # A CSV body can't carry pagination metadata, so it goes in headers
+            headers = {
+                "Content-Disposition": "attachment; filename=oed_data.csv",
+                "X-Total-Count": str(total_count),
+            }
+            links = []
+            if next_url:
+                links.append(f'<{next_url}>; rel="next"')
+            if previous_url:
+                links.append(f'<{previous_url}>; rel="prev"')
+            if links:
+                headers["Link"] = ", ".join(links)
+
             # Return streaming response
             output.seek(0)
             return StreamingResponse(
                 iter([output.getvalue()]),
                 media_type="text/csv",
-                headers={"Content-Disposition": "attachment; filename=oed_data.csv"},
+                headers=headers,
             )
         else:
             # JSON response with enhanced pagination info
@@ -244,54 +299,13 @@ else:
                 "data": data,
             }
 
-            # Add pagination links if automatic pagination was applied
             if params.auto_paginated:
                 # Add flag indicating automatic pagination was applied
                 response["auto_paginated"] = True
-
-                if request:
-                    base_url = str(request.url).split("?")[0]
-
-                    # Prepare query parameters for pagination links
-                    # For Pydantic v2 compatibility
-                    query_params = {
-                        k: v
-                        for k, v in params.model_dump().items()
-                        if k not in ["auto_paginated", "offset", "limit"]
-                        and v is not None
-                    }
-
-                    # Set format explicitly if it was provided
-                    if params.format != ResponseFormat.JSON:
-                        query_params["format"] = params.format
-
-                    # Calculate next page link if there are more records
-                    current_offset = params.offset or 0
-                    current_limit = params.limit or total_count
-                    if current_offset + current_limit < total_count:
-                        next_offset = current_offset + current_limit
-                        next_params = {
-                            **query_params,
-                            "offset": next_offset,
-                            "limit": current_limit,
-                        }
-                        response["next"] = (
-                            f"{base_url}?{urlencode(next_params, doseq=True)}"
-                        )
-
-                    # Calculate previous page link if not on first page
-                    current_offset = params.offset or 0
-                    current_limit = params.limit or total_count
-                    if current_offset > 0:
-                        prev_offset = max(0, current_offset - current_limit)
-                        prev_params = {
-                            **query_params,
-                            "offset": prev_offset,
-                            "limit": current_limit,
-                        }
-                        response["previous"] = (
-                            f"{base_url}?{urlencode(prev_params, doseq=True)}"
-                        )
+                if next_url:
+                    response["next"] = next_url
+                if previous_url:
+                    response["previous"] = previous_url
 
             return response
 

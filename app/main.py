@@ -46,10 +46,11 @@ description. You can click on any endpoint to expand it and see more details, in
 
 ### Technical Note: Automatic Pagination
 
-When a query would return more than {settings.AUTO_PAGINATION_THRESHOLD} records and no explicit limit, or a
-larger one, is provided, the API will automatically paginate results to return
-{settings.AUTO_PAGINATION_THRESHOLD} records at a time. The response will include pagination metadata with links to navigate
-to next and previous pages.
+When a query would return more than {settings.AUTO_PAGINATION_THRESHOLD} records and no explicit limit, or one of
+at least {settings.AUTO_PAGINATION_THRESHOLD}, is provided, the API will automatically paginate results to return
+{settings.AUTO_PAGINATION_THRESHOLD} records at a time. A JSON response will include pagination metadata with links to
+navigate to next and previous pages. A CSV response carries the same links in a `Link` header, and the total
+number of matching records in an `X-Total-Count` header.
 
 ## Data Download
 
