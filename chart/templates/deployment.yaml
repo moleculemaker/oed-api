@@ -31,13 +31,13 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.config.existingSecret }}
-{{- end }}
+{{- with .Values.controller.extraEnv }}
           env:
-            # Proxies uvicorn takes X-Forwarded-Proto from, so links it builds use https
-            - name: FORWARDED_ALLOW_IPS
-              value: {{ .Values.controller.forwardedAllowIps | quote }}
-{{- if not .Values.config.existingSecret }}
-            # Use hardcoded plaintext values (less secure)
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- else }}
+          # Use hardcoded plaintext values (less secure)
+          env:
             - name: OED_DB_USER
               value: {{ .Values.config.OED_DB_USER }}
             - name: OED_DB_PASSWORD
@@ -48,4 +48,7 @@ spec:
               value: {{ .Values.config.OED_DB_PORT }}
             - name: OED_DB_NAME
               value: {{ .Values.config.OED_DB_NAME }}
+{{- with .Values.controller.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+{{- end }}
 {{- end }}
