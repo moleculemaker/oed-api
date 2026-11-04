@@ -1,7 +1,5 @@
 from typing import Any, Dict, List, Tuple
 
-import rich
-
 from app.db.database import Database
 from app.models.oed_data import OEDColumn
 from app.models.query_params import OEDDataQueryParams
@@ -140,7 +138,6 @@ async def get_filtered_data(
 
     # Execute the query
     records = await db.fetch(query, *query_args)
-    rich.print(f"{records=}")
     return records
 
 

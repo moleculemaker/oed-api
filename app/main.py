@@ -46,9 +46,9 @@ description. You can click on any endpoint to expand it and see more details, in
 
 ### Technical Note: Automatic Pagination
 
-When a query would return more than {settings.AUTO_PAGINATION_THRESHOLD} records and no explicit limit is
-provided, the API will automatically paginate results to return {settings.AUTO_PAGINATION_THRESHOLD} records
-at a time. The response will include pagination metadata with links to navigate
+When a query would return more than {settings.AUTO_PAGINATION_THRESHOLD} records and no explicit limit, or a
+larger one, is provided, the API will automatically paginate results to return
+{settings.AUTO_PAGINATION_THRESHOLD} records at a time. The response will include pagination metadata with links to navigate
 to next and previous pages.
 
 ## Data Download

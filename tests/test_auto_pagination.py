@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -118,3 +120,56 @@ async def test_pagination_navigation(monkeypatch):
     # Skip this test for now - we'll address it separately
     # This test requires more complex mocking of the request/response cycle
     pytest.skip("This test will be implemented in a separate PR")
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mock_db", 
+    [
+        {
+            "fetchval": lambda self, query, *args: 100,
+            "fetch": lambda self, query, *args: [{"id": i, "ec": f"1.1.1.{i}", "organism": f"Test Organism {i}"} for i in range(10)]
+        }
+    ], 
+    indirect=True
+)
+async def test_explicit_limit_above_threshold_is_capped(monkeypatch, test_client, mock_db, sql_capture):
+    """Test that an explicit limit larger than the threshold is reduced to the threshold.
+
+    Without the cap, one request can load the whole table into memory."""
+    monkeypatch.setattr(settings, "AUTO_PAGINATION_THRESHOLD", 10)
+
+    response = test_client.get("/api/v1/data?limit=1000")
+
+    assert response.status_code == 200
+    data = response.json()
+
+    # The query itself is limited, not just the response
+    data_query = [q["query"] for q in sql_capture if "COUNT(*)" not in q["query"]][0]
+    assert re.search(r"LIMIT 10\b", data_query)
+
+    assert data["auto_paginated"] is True
+    assert data["limit"] == 10
+    assert data["total"] == 100
+    assert "offset=10" in data["next"]
+    assert "limit=10" in data["next"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mock_db", 
+    [
+        {
+            "fetchval": lambda self, query, *args: 100,
+            "fetch": lambda self, query, *args: [{"id": i, "ec": "1.1.1.1", "organism": "Distinctive organism"} for i in range(5)]
+        }
+    ], 
+    indirect=True
+)
+async def test_results_are_not_printed(test_client, mock_db, capsys):
+    """Test that query results are not written to stdout.
+
+    Printing every record of a large result set cost far more memory than the records."""
+    response = test_client.get("/api/v1/data?limit=5")
+
+    assert response.status_code == 200
+    assert "Distinctive organism" not in capsys.readouterr().out

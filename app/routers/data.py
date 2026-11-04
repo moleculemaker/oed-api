@@ -94,7 +94,7 @@ different columns are combined with AND logic.
 The response format can be either JSON (default) or CSV.
 
 Results are automatically paginated when they exceed the configured threshold, unless
-an explicit limit is provided.
+an explicit limit at or below the threshold is provided.
 
 ### URL examples
 
@@ -192,8 +192,12 @@ else:
         # Get total count for the query (without pagination)
         total_count = await get_total_count(db, params)
 
-        # Apply automatic pagination if results exceed threshold and no explicit limit provided
-        if total_count > settings.AUTO_PAGINATION_THRESHOLD and params.limit is None:
+        # Apply automatic pagination if results exceed threshold and no explicit limit,
+        # or a larger one, was provided. Without the cap one request could load the
+        # whole table into memory.
+        if total_count > settings.AUTO_PAGINATION_THRESHOLD and (
+            params.limit is None or params.limit > settings.AUTO_PAGINATION_THRESHOLD
+        ):
             params.auto_paginated = True
             params.limit = settings.AUTO_PAGINATION_THRESHOLD
             logger.info(
