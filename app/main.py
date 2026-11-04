@@ -53,7 +53,8 @@ An explicit JSON limit can be at most {settings.AUTO_PAGINATION_THRESHOLD}.
 
 CSV responses are not paginated. Without an explicit limit, a CSV query returns every matching
 record, up to {data.MAX_DATA_LIMIT}; a query that matches more is rejected with a 400 asking
-you to narrow the filters or page with `limit` and `offset`.
+you to narrow the filters or page with `limit` and `offset`. A CSV response carries no total,
+so when paging CSV with `limit`, stop at the first response with fewer than `limit` records.
 
 ## Data Download
 

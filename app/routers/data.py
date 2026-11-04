@@ -171,7 +171,9 @@ The response format can be either JSON (default) or CSV.
 JSON results are automatically paginated when they exceed the configured threshold, unless
 an explicit limit is provided; an explicit JSON limit can be at most the threshold. CSV
 results are not paginated: without an explicit limit, every matching record is returned,
-up to 100,000, and a query matching more gets a 400.
+up to 100,000, and a query matching more gets a 400. A CSV response carries no total,
+so when paging CSV with an explicit limit, stop at the first response with fewer than
+limit records.
 
 ### URL examples
 
