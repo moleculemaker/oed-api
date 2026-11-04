@@ -1,19 +1,74 @@
 import csv
-from io import StringIO
-from typing import Any, List, Optional
+from contextlib import aclosing
+from tempfile import SpooledTemporaryFile
+from typing import Any, AsyncIterator, Dict, Iterator, List, Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from starlette.background import BackgroundTask
 
 from app.core.config import settings
 from app.db.database import Database, get_db
-from app.db.queries import get_filtered_data, get_total_count
+from app.db.queries import get_filtered_data, get_total_count, iter_filtered_data
 from app.models.query_params import OEDDataQueryParams, ResponseFormat
 
 # Largest value Postgres accepts for LIMIT and OFFSET
 MAX_BIGINT = 2**63 - 1
+
+# Most records one /data response may contain, as an explicit limit or a whole CSV
+MAX_DATA_LIMIT = 100_000
+
+# CSV output stays in memory up to this size, then spills to a temp file on disk
+CSV_SPOOL_MAX_MEMORY = 8 * 1024 * 1024
+
+
+async def write_csv(
+    rows: AsyncIterator[Dict[str, Any]],
+    fieldnames: Optional[List[str]],
+    max_rows: Optional[int] = None,
+) -> SpooledTemporaryFile:
+    """Write rows as CSV to a spooled temp file, rewound for reading.
+
+    The columns are fieldnames, or the first row's keys if fieldnames is None. The whole
+    result is written before the response starts, so the DB connection is released at
+    the speed of the DB, not the speed of the client reading the response. Raises a 400
+    if rows has more than max_rows rows.
+    """
+    output = SpooledTemporaryFile(max_size=CSV_SPOOL_MAX_MEMORY, mode="w+", newline="")
+    try:
+        writer = None
+        if fieldnames:
+            writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+        # aclosing releases the DB connection now if we stop early, not at garbage collection
+        async with aclosing(rows):
+            count = 0
+            async for row in rows:
+                count += 1
+                if max_rows is not None and count > max_rows:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Query matches more than {max_rows} records, the most a CSV "
+                        "response can contain. Narrow the filters, or page with limit and offset.",
+                    )
+                if writer is None:
+                    writer = csv.DictWriter(output, fieldnames=list(row.keys()), extrasaction="ignore")
+                    writer.writeheader()
+                writer.writerow(row)
+    except BaseException:
+        output.close()
+        raise
+    output.seek(0)
+    return output
+
+
+def read_chunks(file: SpooledTemporaryFile, size: int = 64 * 1024) -> Iterator[str]:
+    """Read a file in chunks."""
+    while chunk := file.read(size):
+        yield chunk
 
 router = APIRouter(tags=["Data"])
 
@@ -51,13 +106,28 @@ def parse_query_params(
         None, description="Columns to include in the response"
     ),
     limit: Optional[int] = Query(
-        None, ge=1, le=MAX_BIGINT, description="Maximum number of records to return"
+        None, ge=1, le=MAX_DATA_LIMIT,
+        description="Maximum number of records to return "
+        f"(at most {settings.AUTO_PAGINATION_THRESHOLD} for JSON, {MAX_DATA_LIMIT} for CSV)",
     ),
     offset: Optional[int] = Query(
         0, ge=0, le=MAX_BIGINT, description="Number of records to skip"
     ),
 ) -> OEDDataQueryParams:
     """Parse and validate query parameters."""
+    # JSON is paginated, so a JSON page is never larger than the default page size.
+    # Shaped like the le= error on limit, so both caps fail the same way.
+    max_json_limit = settings.AUTO_PAGINATION_THRESHOLD
+    if format == ResponseFormat.JSON and limit is not None and limit > max_json_limit:
+        raise RequestValidationError([{
+            "type": "less_than_equal",
+            "loc": ("query", "limit"),
+            "msg": f"Input should be less than or equal to {max_json_limit} for JSON responses; "
+            "page with offset, or use format=csv",
+            "input": str(limit),
+            "ctx": {"le": max_json_limit},
+        }])
+
     try:
         # Validate format
         if format not in [fmt for fmt in ResponseFormat]:
@@ -98,9 +168,10 @@ different columns are combined with AND logic.
 
 The response format can be either JSON (default) or CSV.
 
-Results are automatically paginated when they exceed the configured threshold, unless
-an explicit limit below the threshold is provided. CSV responses carry the pagination
-links in a `Link` header and the total in an `X-Total-Count` header.
+JSON results are automatically paginated when they exceed the configured threshold, unless
+an explicit limit is provided; an explicit JSON limit can be at most the threshold. CSV
+results are not paginated: without an explicit limit, every matching record is returned,
+up to 100,000, and a query matching more gets a 400.
 
 ### URL examples
 
@@ -195,13 +266,30 @@ else:
     """
 
     try:
+        # CSV is not paginated: without an explicit limit, return every match up to the cap
+        if params.format == ResponseFormat.CSV:
+            if params.limit is None:
+                # Fetch one row past the cap, so a result that is too large is detected
+                # while writing instead of silently cut off
+                rows = iter_filtered_data(db, params.model_copy(update={"limit": MAX_DATA_LIMIT + 1}))
+                csv_file = await write_csv(rows, params.columns, max_rows=MAX_DATA_LIMIT)
+            else:
+                csv_file = await write_csv(iter_filtered_data(db, params), params.columns)
+            return StreamingResponse(
+                read_chunks(csv_file),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=oed_data.csv"},
+                # Runs after the response ends, including when the client disconnects
+                background=BackgroundTask(csv_file.close),
+            )
+
         # Get total count for the query (without pagination)
         total_count = await get_total_count(db, params)
 
         # Apply automatic pagination if results exceed threshold and no explicit limit,
-        # or one at least as large, was provided. Without the cap one request could load
-        # the whole table into memory. ">=" because the `next` links below carry
-        # limit=threshold, and those pages need links of their own.
+        # or one equal to it, was provided. A larger one was rejected when parsing.
+        # Equal counts because the `next` links below carry limit=threshold, and those
+        # pages need links of their own.
         if total_count > settings.AUTO_PAGINATION_THRESHOLD and (
             params.limit is None or params.limit >= settings.AUTO_PAGINATION_THRESHOLD
         ):
@@ -214,7 +302,7 @@ else:
         # Get data from database (now with potential auto-pagination applied)
         data = await get_filtered_data(db, params)
 
-        # Pagination links, for both response formats
+        # Pagination links
         next_url = None
         previous_url = None
         if params.auto_paginated and request:
@@ -228,10 +316,6 @@ else:
                 if k not in ["auto_paginated", "offset", "limit"]
                 and v is not None
             }
-
-            # Set format explicitly if it was provided
-            if params.format != ResponseFormat.JSON:
-                query_params["format"] = params.format
 
             current_offset = params.offset or 0
             current_limit = params.limit or total_count
@@ -257,66 +341,26 @@ else:
                 }
                 previous_url = f"{base_url}?{urlencode(prev_params, doseq=True)}"
 
-        # Handle response format
-        if params.format == ResponseFormat.CSV:
-            # Create CSV response
-            output = StringIO()
+        # JSON response with enhanced pagination info
+        response = {
+            "total": total_count,
+            "offset": params.offset,
+            "limit": params.limit if params.limit is not None else total_count,
+            "data": data,
+        }
 
-            # Determine columns to include in CSV
-            if params.columns:
-                fieldnames = params.columns
-            elif data and len(data) > 0:
-                fieldnames = list(data[0].keys())
-            else:
-                fieldnames = []
-
-            # Write CSV
-            writer = csv.DictWriter(
-                output, fieldnames=fieldnames, extrasaction="ignore"
-            )
-            writer.writeheader()
-            for row in data:
-                writer.writerow(row)
-
-            # A CSV body can't carry pagination metadata, so it goes in headers
-            headers = {
-                "Content-Disposition": "attachment; filename=oed_data.csv",
-                "X-Total-Count": str(total_count),
-            }
-            links = []
+        if params.auto_paginated:
+            # Add flag indicating automatic pagination was applied
+            response["auto_paginated"] = True
             if next_url:
-                links.append(f'<{next_url}>; rel="next"')
+                response["next"] = next_url
             if previous_url:
-                links.append(f'<{previous_url}>; rel="prev"')
-            if links:
-                headers["Link"] = ", ".join(links)
+                response["previous"] = previous_url
 
-            # Return streaming response
-            output.seek(0)
-            return StreamingResponse(
-                iter([output.getvalue()]),
-                media_type="text/csv",
-                headers=headers,
-            )
-        else:
-            # JSON response with enhanced pagination info
-            response = {
-                "total": total_count,
-                "offset": params.offset,
-                "limit": params.limit if params.limit is not None else total_count,
-                "data": data,
-            }
+        return response
 
-            if params.auto_paginated:
-                # Add flag indicating automatic pagination was applied
-                response["auto_paginated"] = True
-                if next_url:
-                    response["next"] = next_url
-                if previous_url:
-                    response["previous"] = previous_url
-
-            return response
-
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting data: {e}")
         raise HTTPException(status_code=500, detail=f"Error retrieving data: {str(e)}")

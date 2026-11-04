@@ -44,6 +44,11 @@ class MockDatabase(Database):
         
         return []  # Return empty list as a default response
     
+    async def iterate(self, query: str, *args):
+        """Capture query and stream the same result set fetch would return."""
+        for record in await self.fetch(query, *args):
+            yield record
+
     async def fetchval(self, query: str, *args, **kwargs) -> Any:
         """Capture query and return a default value."""
         self.executed_queries.append({"query": query, "args": args})

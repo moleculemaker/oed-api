@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Tuple
+from contextlib import aclosing
+from typing import Any, AsyncIterator, Dict, List, Tuple
 
 from app.db.database import Database
 from app.models.oed_data import OEDColumn
@@ -101,10 +102,8 @@ async def build_query_conditions(
     return where_clause, query_params
 
 
-async def get_filtered_data(
-    db: Database, params: OEDDataQueryParams
-) -> List[Dict[str, Any]]:
-    """Get filtered data from the database."""
+async def build_data_query(params: OEDDataQueryParams) -> Tuple[str, List[Any]]:
+    """Build the filtered data query and its arguments."""
     where_clause, query_params = await build_query_conditions(params)
 
     # Determine which columns to select, default to all columns
@@ -136,9 +135,26 @@ async def get_filtered_data(
     # Extract query parameters from the dictionary
     query_args = list(query_params.values())
 
-    # Execute the query
-    records = await db.fetch(query, *query_args)
-    return records
+    return query, query_args
+
+
+async def get_filtered_data(
+    db: Database, params: OEDDataQueryParams
+) -> List[Dict[str, Any]]:
+    """Get filtered data from the database."""
+    query, query_args = await build_data_query(params)
+    return await db.fetch(query, *query_args)
+
+
+async def iter_filtered_data(
+    db: Database, params: OEDDataQueryParams
+) -> AsyncIterator[Dict[str, Any]]:
+    """Stream filtered data from the database."""
+    query, query_args = await build_data_query(params)
+    # Closing this generator early closes the cursor too, releasing its connection
+    async with aclosing(db.iterate(query, *query_args)) as records:
+        async for record in records:
+            yield record
 
 
 async def get_total_count(db: Database, params: OEDDataQueryParams) -> int:

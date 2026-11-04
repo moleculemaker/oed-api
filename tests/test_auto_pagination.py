@@ -1,5 +1,3 @@
-import re
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -142,37 +140,19 @@ async def test_pagination_navigation(monkeypatch, test_client, mock_db):
     assert offsets == [0, 10, 20]
     assert "offset=10" in data["previous"]
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "mock_db", 
-    [
-        {
-            "fetchval": lambda self, query, *args: 100,
-            "fetch": lambda self, query, *args: [{"id": i, "ec": f"1.1.1.{i}", "organism": f"Test Organism {i}"} for i in range(10)]
-        }
-    ], 
-    indirect=True
-)
-async def test_explicit_limit_above_threshold_is_capped(monkeypatch, test_client, mock_db, sql_capture):
-    """Test that an explicit limit larger than the threshold is reduced to the threshold.
+@pytest.mark.parametrize("limit, status", [(10, 200), (11, 422)])
+def test_json_limit_is_at_most_the_page_size(monkeypatch, test_client, sql_capture, limit, status):
+    """Test that a JSON limit above the page size is rejected before any SQL runs.
 
-    Without the cap, one request can load the whole table into memory."""
+    JSON is paginated, so nothing becomes unreachable; CSV takes larger limits."""
     monkeypatch.setattr(settings, "AUTO_PAGINATION_THRESHOLD", 10)
 
-    response = test_client.get("/api/v1/data?limit=1000")
+    response = test_client.get(f"/api/v1/data?limit={limit}")
 
-    assert response.status_code == 200
-    data = response.json()
-
-    # The query itself is limited, not just the response
-    data_query = [q["query"] for q in sql_capture if "COUNT(*)" not in q["query"]][0]
-    assert re.search(r"LIMIT 10\b", data_query)
-
-    assert data["auto_paginated"] is True
-    assert data["limit"] == 10
-    assert data["total"] == 100
-    assert "offset=10" in data["next"]
-    assert "limit=10" in data["next"]
+    assert response.status_code == status, response.text
+    if status == 422:
+        assert [e["loc"] for e in response.json()["detail"]] == [["query", "limit"]]
+        assert sql_capture == []
 
 
 @pytest.mark.asyncio
@@ -195,28 +175,3 @@ async def test_results_are_not_printed(test_client, mock_db, capsys):
     assert response.status_code == 200
     assert "Distinctive organism" not in capsys.readouterr().out
 
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "mock_db", 
-    [
-        {
-            "fetchval": lambda self, query, *args: 100,
-            "fetch": lambda self, query, *args: [{"id": i, "ec": f"1.1.1.{i}", "organism": f"Test Organism {i}"} for i in range(10)]
-        }
-    ], 
-    indirect=True
-)
-async def test_capped_csv_says_there_is_more(monkeypatch, test_client, mock_db):
-    """Test that a CSV response cut off by the cap says so in its headers.
-
-    A CSV body has nowhere to carry pagination metadata."""
-    monkeypatch.setattr(settings, "AUTO_PAGINATION_THRESHOLD", 10)
-
-    response = test_client.get("/api/v1/data?format=csv&limit=1000")
-
-    assert response.status_code == 200
-    assert response.headers["x-total-count"] == "100"
-    assert 'rel="next"' in response.headers["link"]
-    assert "offset=10" in response.headers["link"]
-    assert "format=csv" in response.headers["link"]
