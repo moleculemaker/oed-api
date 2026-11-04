@@ -22,6 +22,10 @@ spec:
           imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.port }}
+{{- with .Values.controller.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
 {{- if .Values.config.existingSecret }}
           # Load environment variable values from existing Secret
           envFrom:
