@@ -38,6 +38,11 @@ controller:
     limits:
       memory: 1Gi
 
+  # Sources trusted for X-Forwarded-* headers. TLS ends at traefik, so without this the
+  # app sees plain http and its pagination links say http://. The cluster's pod network
+  # (every node's podCIDR is inside 10.42.0.0/16), where traefik's pods run.
+  forwardedAllowIps: "10.42.0.0/16"
+
   # TODO: parameterize labels, tolerations, nodeSelector, etc?
 
 
